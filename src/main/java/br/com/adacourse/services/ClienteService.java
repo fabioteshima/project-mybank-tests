@@ -1,38 +1,42 @@
 package br.com.adacourse.services;
 
 import br.com.adacourse.models.Cliente;
+import br.com.adacourse.repositories.ClienteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.mindrot.jbcrypt.BCrypt;
-
 import java.util.List;
 
 @ApplicationScoped
 public class ClienteService {
 
+    @Inject
+    ClienteRepository clienteRepository; // <--- Injeção do repositório
+
     @Transactional
     public Cliente cadastrarCliente(Cliente cliente){
-        if(Cliente.find("cpf", cliente.getCpf()).firstResult() != null){
+        if(clienteRepository.find("cpf", cliente.getCpf()).firstResult() != null){
             throw new IllegalArgumentException("CPF já cadastrado");
         }
         String hash = BCrypt.hashpw(cliente.getSenha(), BCrypt.gensalt(10));
         cliente.setSenha(hash);
-        cliente.persist();
+        clienteRepository.persist(cliente); // <--- Usando repositório
         return cliente;
     }
 
     public List<Cliente> listarClientes(){
-        return Cliente.listAll();
+        return clienteRepository.listAll();
     }
 
     public Cliente buscarClientePorId(Long id) {
-        return Cliente.findById(id);
+        return clienteRepository.findById(id);
     }
 
     @Transactional
     public Cliente atualizarCliente(Long id, Cliente atualizado){
-        Cliente existente = Cliente.findById(id);
+        Cliente existente = clienteRepository.findById(id);
         if(existente == null){
             throw new EntityNotFoundException("Cliente não encontrado com id");
         }

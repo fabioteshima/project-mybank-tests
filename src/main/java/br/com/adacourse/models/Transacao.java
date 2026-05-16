@@ -1,14 +1,12 @@
 package br.com.adacourse.models;
 
 import br.com.adacourse.enums.TipoTransacao;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-public class Transacao extends PanacheEntityBase {
+public class Transacao {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,8 +29,7 @@ public class Transacao extends PanacheEntityBase {
     @JoinColumn(name = "conta_destino_id")
     private Conta contaDestino;
 
-    public Transacao() {
-    }
+    public Transacao() {}
 
     public Transacao(Long id, TipoTransacao tipo, BigDecimal valor, LocalDateTime dataHora, Conta conta_origem_id, Conta conta_destino_id) {
         this.id = id;

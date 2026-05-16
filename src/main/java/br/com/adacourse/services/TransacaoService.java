@@ -4,11 +4,12 @@ import br.com.adacourse.enums.TipoConta;
 import br.com.adacourse.enums.TipoTransacao;
 import br.com.adacourse.models.Conta;
 import br.com.adacourse.models.Transacao;
+import br.com.adacourse.repositories.ContaRepository;
+import br.com.adacourse.repositories.TransacaoRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,11 +18,17 @@ import java.util.List;
 public class TransacaoService {
 
     @Inject
+    TransacaoRepository transacaoRepository; // <--- Injeção do repositório
+
+    @Inject
+    ContaRepository contaRepository; // <--- Injeção para buscar as contas
+
+    @Inject
     EntityManager em;
 
     @Transactional
     public Transacao depositar(Long contaId, BigDecimal valor){
-        Conta entidade = Conta.findById(contaId);
+        Conta entidade = contaRepository.findById(contaId);
         if(entidade == null){
             throw new IllegalArgumentException("Conta não encontrada");
         }
@@ -34,15 +41,16 @@ public class TransacaoService {
         transacao.setValor(valor);
         transacao.setDataHora(LocalDateTime.now());
         transacao.setContaDestino(entidade);
-        transacao.persist();
+
+        transacaoRepository.persist(transacao); // <--- Usando repositório
         em.flush();
-        em.refresh(entidade); // força recarregar do banco
+        em.refresh(entidade);
         return transacao;
     }
 
     @Transactional
     public Transacao sacar(Long contaId, BigDecimal valor){
-        Conta entidade = Conta.findById(contaId);
+        Conta entidade = contaRepository.findById(contaId);
         if(entidade == null){
             throw new IllegalArgumentException("ContaId não encontrada");
         }
@@ -58,7 +66,8 @@ public class TransacaoService {
         transacao.setValor(valor);
         transacao.setDataHora(LocalDateTime.now());
         transacao.setContaOrigem(entidade);
-        transacao.persist();
+
+        transacaoRepository.persist(transacao); // <--- Usando repositório
         em.flush();
         em.refresh(entidade);
         return transacao;
@@ -66,11 +75,11 @@ public class TransacaoService {
 
     @Transactional
     public Transacao transferir(Long contaOrigemId, Long contaDestinoId, BigDecimal valor){
-        Conta contaOrigem = Conta.findById(contaOrigemId);
+        Conta contaOrigem = contaRepository.findById(contaOrigemId);
         if((contaOrigem == null)){
             throw new IllegalArgumentException("ContaId origem não encontrado");
         }
-        Conta contaDestino = Conta.findById(contaDestinoId);
+        Conta contaDestino = contaRepository.findById(contaDestinoId);
         if((contaDestino == null)){
             throw new IllegalArgumentException("ContaId destino não encontrado");
         }
@@ -83,28 +92,24 @@ public class TransacaoService {
         transacao.setDataHora(LocalDateTime.now());
         transacao.setContaOrigem(contaOrigem);
         transacao.setContaDestino(contaDestino);
-        transacao.persist();
+
+        transacaoRepository.persist(transacao); // <--- Usando repositório
         em.flush();
-        // Recarrega as contas para atualizar saldo via @Formula
         em.refresh(contaOrigem);
         em.refresh(contaDestino);
         return transacao;
     }
 
     public List<Transacao> listarTransacoes(){
-        return Transacao.listAll();
+        return transacaoRepository.listAll();
     }
 
     public Transacao buscarTransacaoPorId(Long id){
-      return Transacao.findById(id);
+        return transacaoRepository.findById(id);
     }
 
     public List<Transacao> buscarTransacoesPorConta(Long contaId) {
-        return em.createQuery(
-                        "SELECT t FROM Transacao t " +
-                                "WHERE t.contaOrigem.id = :contaId OR t.contaDestino.id = :contaId " +
-                                "ORDER BY t.dataHora ASC", Transacao.class)
-                .setParameter("contaId", contaId)
-                .getResultList();
+        // Lógica delegada para o repositório específico
+        return transacaoRepository.buscarTransacoesPorConta(contaId);
     }
 }

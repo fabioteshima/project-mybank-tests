@@ -9,6 +9,7 @@ import br.com.adacourse.models.Conta;
 import br.com.adacourse.models.Transacao;
 import br.com.adacourse.services.ContaService;
 import br.com.adacourse.services.TransacaoService;
+import br.com.adacourse.repositories.ContaRepository;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -33,6 +34,9 @@ public class ContaResource {
 
     @Inject
     TransacaoService transacaoService;
+
+    @Inject
+    ContaRepository contaRepository;
 
     @POST
     @RolesAllowed("GERENTE")
@@ -96,18 +100,12 @@ public class ContaResource {
     public Response depositar(@PathParam("id") Long id, @Valid DepositoReqDTO dto){
         try {
             Transacao transacao = transacaoService.depositar(id, dto.valor());
-            Conta contaAtualizada = Conta.findById(id);
+            Conta contaAtualizada = contaRepository.findById(id); // <--- Alterado de Conta.findById
             return Response.ok(DepositoRespDTO.converterParaDTO(transacao, contaAtualizada)).build();
-        }
-        catch (UnsupportedOperationException e){
-            return Response.status(422)
-                    .entity(Map.of("erro", e.getMessage()))
-                    .build();
-        }
-        catch (IllegalArgumentException e){
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("erro", e.getMessage()))
-                    .build();
+        } catch (UnsupportedOperationException e){
+            return Response.status(422).entity(Map.of("erro", e.getMessage())).build();
+        } catch (IllegalArgumentException e){
+            return Response.status(Response.Status.NOT_FOUND).entity(Map.of("erro", e.getMessage())).build();
         }
     }
 
@@ -117,18 +115,12 @@ public class ContaResource {
     public Response sacar(@PathParam("id") Long id, @Valid SaqueReqDTO dto){
         try {
             Transacao transacao = transacaoService.sacar(id, dto.valor());
-            Conta contaAtualizada = Conta.findById(id);
+            Conta contaAtualizada = contaRepository.findById(id);
             return Response.ok(SaqueRespDTO.converterParaDTO(transacao, contaAtualizada)).build();
-        }
-        catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("erro", e.getMessage()))
-                    .build();
-        }
-        catch (UnsupportedOperationException | IllegalStateException e){
-            return Response.status(422)
-                    .entity(Map.of("erro", e.getMessage()))
-                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND).entity(Map.of("erro", e.getMessage())).build();
+        } catch (UnsupportedOperationException | IllegalStateException e){
+            return Response.status(422).entity(Map.of("erro", e.getMessage())).build();
         }
     }
 
@@ -138,21 +130,15 @@ public class ContaResource {
     public Response transferir(@PathParam("id") Long contaOrigemId, @Valid TransferenciaReqDTO dto){
         try {
             Transacao transacao = transacaoService.transferir(contaOrigemId, dto.contaDestino().id(), dto.valor());
-            Conta contaOrigemAtualizado = Conta.findById(contaOrigemId);
-            Conta contaDestinoAtualizado = Conta.findById(dto.contaDestino().id());
+            Conta contaOrigemAtualizado = contaRepository.findById(contaOrigemId); // <--- Alterado
+            Conta contaDestinoAtualizado = contaRepository.findById(dto.contaDestino().id()); // <--- Alterado
             return Response.ok(TransferenciaRespDTO.converterParaDTO(
-                    transacao, contaOrigemAtualizado, contaDestinoAtualizado))
+                            transacao, contaOrigemAtualizado, contaDestinoAtualizado))
                     .build();
-        }
-        catch(IllegalArgumentException e){
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("erro", e.getMessage()))
-                    .build();
-        }
-        catch (IllegalStateException e){
-            return Response.status(422)
-                    .entity(Map.of("erro", e.getMessage()))
-                    .build();
+        } catch(IllegalArgumentException e){
+            return Response.status(Response.Status.NOT_FOUND).entity(Map.of("erro", e.getMessage())).build();
+        } catch (IllegalStateException e){
+            return Response.status(422).entity(Map.of("erro", e.getMessage())).build();
         }
     }
 }

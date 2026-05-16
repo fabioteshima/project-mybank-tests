@@ -1,10 +1,8 @@
 package br.com.adacourse.models;
 
 import br.com.adacourse.enums.TipoConta;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Formula;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +10,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "conta")
-public class Conta extends PanacheEntityBase {
+public class Conta {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,8 +37,7 @@ public class Conta extends PanacheEntityBase {
             "(SELECT COALESCE(SUM(t.valor),0) FROM transacao t WHERE t.conta_origem_id = id) )")
     private BigDecimal saldo;
 
-    public Conta() {
-    }
+    public Conta() {}
 
     public Conta(Long id, String numero, TipoConta tipo, Cliente titular) {
         this.id = id;

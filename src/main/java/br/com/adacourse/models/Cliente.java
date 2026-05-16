@@ -1,14 +1,12 @@
 package br.com.adacourse.models;
 
 import br.com.adacourse.enums.TipoCliente;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.util.Objects;
 
 @Entity
 @Table(name = "cliente")
-public class Cliente extends PanacheEntityBase {
+public class Cliente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,8 +28,7 @@ public class Cliente extends PanacheEntityBase {
     @Enumerated(EnumType.STRING)
     private TipoCliente role;
 
-    public Cliente() {
-    }
+    public Cliente() {}
 
     public Cliente(Long id, String nome, String cpf, String email, String senha, TipoCliente role) {
         this.id = id;
