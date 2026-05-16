@@ -13,7 +13,7 @@ import java.util.List;
 public class ClienteService {
 
     @Inject
-    ClienteRepository clienteRepository; // <--- Injeção do repositório
+    ClienteRepository clienteRepository;
 
     @Transactional
     public Cliente cadastrarCliente(Cliente cliente){
@@ -22,7 +22,7 @@ public class ClienteService {
         }
         String hash = BCrypt.hashpw(cliente.getSenha(), BCrypt.gensalt(10));
         cliente.setSenha(hash);
-        clienteRepository.persist(cliente); // <--- Usando repositório
+        clienteRepository.persist(cliente);
         return cliente;
     }
 

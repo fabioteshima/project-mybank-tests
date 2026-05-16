@@ -17,7 +17,7 @@ public class ContaService {
     ClienteService clienteService;
 
     @Inject
-    ContaRepository contaRepository; // <--- Injeção do repositório
+    ContaRepository contaRepository;
 
     @Inject
     EntityManager em;

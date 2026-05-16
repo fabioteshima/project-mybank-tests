@@ -18,10 +18,10 @@ import java.util.List;
 public class TransacaoService {
 
     @Inject
-    TransacaoRepository transacaoRepository; // <--- Injeção do repositório
+    TransacaoRepository transacaoRepository;
 
     @Inject
-    ContaRepository contaRepository; // <--- Injeção para buscar as contas
+    ContaRepository contaRepository;
 
     @Inject
     EntityManager em;
@@ -42,7 +42,7 @@ public class TransacaoService {
         transacao.setDataHora(LocalDateTime.now());
         transacao.setContaDestino(entidade);
 
-        transacaoRepository.persist(transacao); // <--- Usando repositório
+        transacaoRepository.persist(transacao);
         em.flush();
         em.refresh(entidade);
         return transacao;
@@ -67,7 +67,7 @@ public class TransacaoService {
         transacao.setDataHora(LocalDateTime.now());
         transacao.setContaOrigem(entidade);
 
-        transacaoRepository.persist(transacao); // <--- Usando repositório
+        transacaoRepository.persist(transacao);
         em.flush();
         em.refresh(entidade);
         return transacao;
@@ -93,7 +93,7 @@ public class TransacaoService {
         transacao.setContaOrigem(contaOrigem);
         transacao.setContaDestino(contaDestino);
 
-        transacaoRepository.persist(transacao); // <--- Usando repositório
+        transacaoRepository.persist(transacao);
         em.flush();
         em.refresh(contaOrigem);
         em.refresh(contaDestino);
@@ -109,7 +109,6 @@ public class TransacaoService {
     }
 
     public List<Transacao> buscarTransacoesPorConta(Long contaId) {
-        // Lógica delegada para o repositório específico
-        return transacaoRepository.buscarTransacoesPorConta(contaId);
+           return transacaoRepository.buscarTransacoesPorConta(contaId);
     }
 }
