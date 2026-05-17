@@ -3,16 +3,19 @@ package br.com.adacourse.services;
 import br.com.adacourse.enums.TipoCliente;
 import br.com.adacourse.models.Cliente;
 import br.com.adacourse.repositories.ClienteRepository;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
-import org.junit.jupiter.api.BeforeEach;
+import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 import org.mindrot.jbcrypt.BCrypt;
-import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
@@ -24,47 +27,56 @@ public class AuthServiceTest {
     @InjectMock
     ClienteRepository clienteRepository;
 
-    private Cliente clienteMock;
-
-    @BeforeEach
-    public void setup() {
-        clienteMock = new Cliente();
-        clienteMock.setEmail("teste@ada.com");
-        clienteMock.setSenha(BCrypt.hashpw("senha123", BCrypt.gensalt()));
-        clienteMock.setRole(TipoCliente.CLIENTE);
-    }
-
-    @Test
-    public void testAutenticacaoSucesso() {
-        // Criando um mock para o PanacheQuery retornado pelo repository
-        var panacheQueryMock = Mockito.mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class);
-        when(panacheQueryMock.firstResult()).thenReturn(clienteMock);
-        when(clienteRepository.find("email", "teste@ada.com")).thenReturn(panacheQueryMock);
-
-        String token = authService.autenticacao("teste@ada.com", "senha123");
-        assertNotNull(token);
-        assertFalse(token.isEmpty());
-    }
-
     @Test
     public void testAutenticacaoUsuarioNaoEncontrado() {
-        var panacheQueryMock = Mockito.mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class);
-        when(panacheQueryMock.firstResult()).thenReturn(null);
-        when(clienteRepository.find("email", "invalido@ada.com")).thenReturn(panacheQueryMock);
+        PanacheQuery<Cliente> queryMock = mock(PanacheQuery.class);
+        when(queryMock.firstResult()).thenReturn(null);
 
-        assertThrows(WebApplicationException.class, () -> {
-            authService.autenticacao("invalido@ada.com", "senha123");
+        when(clienteRepository.find(anyString(), (Object[]) any())).thenReturn(queryMock);
+
+        WebApplicationException exception = assertThrows(WebApplicationException.class, () -> {
+            authService.autenticacao("usuario.invalido@email.com", "senha123");
         });
+
+        assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), exception.getResponse().getStatus());
+        assertEquals("Credenciais inválidas", exception.getMessage());
     }
 
     @Test
     public void testAutenticacaoSenhaIncorreta() {
-        var panacheQueryMock = Mockito.mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class);
-        when(panacheQueryMock.firstResult()).thenReturn(clienteMock);
-        when(clienteRepository.find("email", "teste@ada.com")).thenReturn(panacheQueryMock);
+        Cliente cliente = new Cliente();
+        cliente.setEmail("cliente@email.com");
+        cliente.setSenha(BCrypt.hashpw("senhaCorreta", BCrypt.gensalt()));
+        cliente.setRole(TipoCliente.CLIENTE);
 
-        assertThrows(WebApplicationException.class, () -> {
-            authService.autenticacao("teste@ada.com", "senha_errada");
+        PanacheQuery<Cliente> queryMock = mock(PanacheQuery.class);
+        when(queryMock.firstResult()).thenReturn(cliente);
+
+        when(clienteRepository.find(anyString(), (Object[]) any())).thenReturn(queryMock);
+
+        WebApplicationException exception = assertThrows(WebApplicationException.class, () -> {
+            authService.autenticacao("cliente@email.com", "senhaIncorreta");
         });
+
+        assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), exception.getResponse().getStatus());
+        assertEquals("Credenciais inválidas", exception.getMessage());
+    }
+
+    @Test
+    public void testAutenticacaoSucesso() {
+        Cliente cliente = new Cliente();
+        cliente.setEmail("gerente@email.com");
+        cliente.setSenha(BCrypt.hashpw("senha123", BCrypt.gensalt()));
+        cliente.setRole(TipoCliente.GERENTE);
+
+        PanacheQuery<Cliente> queryMock = mock(PanacheQuery.class);
+        when(queryMock.firstResult()).thenReturn(cliente);
+
+        when(clienteRepository.find(anyString(), (Object[]) any())).thenReturn(queryMock);
+
+        String tokenJwt = authService.autenticacao("gerente@email.com", "senha123");
+
+        assertNotNull(tokenJwt);
+        assertFalse(tokenJwt.trim().isEmpty());
     }
 }

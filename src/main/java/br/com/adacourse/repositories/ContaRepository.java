@@ -6,4 +6,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class ContaRepository implements PanacheRepository<Conta> {
+
+    public Conta buscarContaPorCliente(Long clienteId) {
+        return find("titular.id", clienteId).firstResult();
+    }
 }
