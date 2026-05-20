@@ -1,4 +1,4 @@
-package br.com.adacourse.resources;
+package integracao;
 
 import br.com.adacourse.models.Cliente;
 import br.com.adacourse.models.Conta;
@@ -7,7 +7,6 @@ import br.com.adacourse.services.TransacaoService;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
-import io.restassured.http.ContentType;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
@@ -31,7 +29,6 @@ public class TransacaoResourceTest {
 
     @BeforeEach
     public void setup() {
-        // Configurando a estrutura padrão de mocks para os testes
         Cliente titular = new Cliente();
         titular.setEmail("cliente@teste.com");
         titular.setNome("Fabio");
@@ -49,20 +46,20 @@ public class TransacaoResourceTest {
         transacaoMock.setContaOrigem(contaOrigem);
     }
 
-    // ==========================================
-    // TESTES DO MÉTODO: buscarTransacoes (GET /transacoes)
-    // ==========================================
-
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testBuscarTransacoesPorContaComoGerente() {
+        // ARRANGE
         Mockito.when(transacaoService.buscarTransacoesPorConta(1L))
                 .thenReturn(List.of(transacaoMock));
 
+        // ACT
         given()
                 .queryParam("contaId", 1L)
                 .when()
                 .get("/transacoes")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("[0].id", Matchers.equalTo(100));
@@ -71,13 +68,17 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "cliente@teste.com", roles = {"CLIENTE"})
     public void testBuscarTransacoesPorContaComoClienteAutorizado() {
+        // ARRANGE
         Mockito.when(transacaoService.buscarTransacoesPorConta(1L))
                 .thenReturn(List.of(transacaoMock));
 
+        // ACT
         given()
                 .queryParam("contaId", 1L)
                 .when()
                 .get("/transacoes")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("[0].id", Matchers.equalTo(100));
@@ -86,13 +87,17 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "invasor@teste.com", roles = {"CLIENTE"})
     public void testBuscarTransacoesPorContaComoClienteNaoAutorizado() {
+        // ARRANGE
         Mockito.when(transacaoService.buscarTransacoesPorConta(1L))
                 .thenReturn(List.of(transacaoMock));
 
+        // ACT
         given()
                 .queryParam("contaId", 1L)
                 .when()
                 .get("/transacoes")
+
+                // ASSERT
                 .then()
                 .statusCode(403)
                 .body("erro", Matchers.equalTo("Acesso não autorizado"));
@@ -101,12 +106,16 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testListarTodasAsTransacoesSemContaIdComoGerente() {
+        // ARRANGE
         Mockito.when(transacaoService.listarTransacoes())
                 .thenReturn(List.of(transacaoMock));
 
+        // ACT
         given()
                 .when()
                 .get("/transacoes")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("[0].id", Matchers.equalTo(100));
@@ -115,28 +124,31 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "cliente@teste.com", roles = {"CLIENTE"})
     public void testListarTodasAsTransacoesSemContaIdComoClienteLançaForbidden() {
+        // ACT
         given()
                 .when()
                 .get("/transacoes")
+
+                // ASSERT
                 .then()
                 .statusCode(403)
                 .body("erro", Matchers.equalTo("Apenas gerente pode listar todas as transações"));
     }
 
-    // ==========================================
-    // TESTES DO MÉTODO: buscarTransacaoPorId (GET /transacoes/{id})
-    // ==========================================
-
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testBuscarTransacaoPorIdInexistenteRetornaNotFound() {
+        // ARRANGE
         Mockito.when(transacaoService.buscarTransacaoPorId(999L))
                 .thenReturn(null);
 
+        // ACT
         given()
                 .pathParam("id", 999L)
                 .when()
                 .get("/transacoes/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(404)
                 .body("erro", Matchers.equalTo("Transação não encontrada"));
@@ -145,13 +157,17 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testBuscarTransacaoPorIdComoGerente() {
+        // ARRANGE
         Mockito.when(transacaoService.buscarTransacaoPorId(100L))
                 .thenReturn(transacaoMock);
 
+        // ACT
         given()
                 .pathParam("id", 100L)
                 .when()
                 .get("/transacoes/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("id", Matchers.equalTo(100));
@@ -160,13 +176,17 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "cliente@teste.com", roles = {"CLIENTE"})
     public void testBuscarTransacaoPorIdComoClienteAutorizado() {
+        // ARRANGE
         Mockito.when(transacaoService.buscarTransacaoPorId(100L))
                 .thenReturn(transacaoMock);
 
+        // ACT
         given()
                 .pathParam("id", 100L)
                 .when()
                 .get("/transacoes/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("id", Matchers.equalTo(100));
@@ -175,13 +195,17 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "invasor@teste.com", roles = {"CLIENTE"})
     public void testBuscarTransacaoPorIdComoClienteNaoAutorizadoRetornaForbidden() {
+        // ARRANGE
         Mockito.when(transacaoService.buscarTransacaoPorId(100L))
                 .thenReturn(transacaoMock);
 
+        // ACT
         given()
                 .pathParam("id", 100L)
                 .when()
                 .get("/transacoes/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(403)
                 .body("erro", Matchers.equalTo("Acesso não autorizado"));
@@ -190,7 +214,7 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "beneficiario@teste.com", roles = {"CLIENTE"})
     public void testBuscarTransacoesPorContaComoClienteSendoContaDestino() {
-        // Cliente Destinatário
+        // ARRANGE
         Cliente titularDestino = new Cliente();
         titularDestino.setEmail("beneficiario@teste.com");
 
@@ -198,22 +222,24 @@ public class TransacaoResourceTest {
         contaDestino.setId(1L);
         contaDestino.setTitular(titularDestino);
 
-        // Transação de Depósito Puro (Sem conta de origem)
         Transacao depositoMock = new Transacao();
         depositoMock.setId(200L);
         depositoMock.setValor(BigDecimal.valueOf(300.0));
         depositoMock.setTipo(br.com.adacourse.enums.TipoTransacao.DEPOSITO);
         depositoMock.setDataHora(LocalDateTime.now());
-        depositoMock.setContaOrigem(null); // Origem é NULA
+        depositoMock.setContaOrigem(null);
         depositoMock.setContaDestino(contaDestino);
 
         Mockito.when(transacaoService.buscarTransacoesPorConta(1L))
                 .thenReturn(List.of(depositoMock));
 
+        // ACT
         given()
                 .queryParam("contaId", 1L)
                 .when()
                 .get("/transacoes")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("[0].id", Matchers.equalTo(200));
@@ -222,6 +248,7 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "beneficiario@teste.com", roles = {"CLIENTE"})
     public void testBuscarTransacaoPorIdComoClienteSendoContaDestino() {
+        // ARRANGE
         Cliente titularDestino = new Cliente();
         titularDestino.setEmail("beneficiario@teste.com");
 
@@ -234,15 +261,18 @@ public class TransacaoResourceTest {
         depositoMock.setValor(BigDecimal.valueOf(300.0));
         depositoMock.setTipo(br.com.adacourse.enums.TipoTransacao.DEPOSITO);
         depositoMock.setDataHora(LocalDateTime.now());
-        depositoMock.setContaOrigem(null); // Origem NULA
+        depositoMock.setContaOrigem(null);
         depositoMock.setContaDestino(contaDestino);
 
         Mockito.when(transacaoService.buscarTransacaoPorId(200L)).thenReturn(depositoMock);
 
+        // ACT
         given()
                 .pathParam("id", 200L)
                 .when()
                 .get("/transacoes/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("id", Matchers.equalTo(200));
@@ -251,7 +281,7 @@ public class TransacaoResourceTest {
     @Test
     @TestSecurity(user = "usuario_aleatorio@teste.com", roles = {"CLIENTE"})
     public void testBuscarTransacaoComContasNulasRetornaForbidden() {
-        // Uma transação órfã do sistema (ex: taxas internas sem contas associadas explicitamente)
+        // ARRANGE
         Transacao transacaoSemContas = new Transacao();
         transacaoSemContas.setId(500L);
         transacaoSemContas.setValor(BigDecimal.valueOf(5.0));
@@ -261,10 +291,13 @@ public class TransacaoResourceTest {
 
         Mockito.when(transacaoService.buscarTransacaoPorId(500L)).thenReturn(transacaoSemContas);
 
+        // ACT
         given()
                 .pathParam("id", 500L)
                 .when()
                 .get("/transacoes/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(403)
                 .body("erro", Matchers.equalTo("Acesso não autorizado"));

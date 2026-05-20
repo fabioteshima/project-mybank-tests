@@ -1,13 +1,12 @@
-package br.com.adacourse.resources;
+package integracao;
 
+import br.com.adacourse.enums.TipoTransacao;
 import br.com.adacourse.models.Cliente;
-import br.com.adacourse.models.Transacao;
 import br.com.adacourse.models.Conta;
+import br.com.adacourse.models.Transacao;
 import br.com.adacourse.repositories.ContaRepository;
 import br.com.adacourse.services.ContaService;
 import br.com.adacourse.services.TransacaoService;
-import br.com.adacourse.enums.TipoTransacao;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -21,9 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
@@ -41,6 +39,7 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testSacarEndpointComSucesso() {
+        // ARRANGE
         Long contaId = 1L;
         Map<String, Object> payload = Map.of("valor", 50.0);
 
@@ -62,38 +61,44 @@ public class ContaResourceTest {
         when(contaRepository.findById(contaId)).thenReturn(contaMock);
         when(transacaoService.sacar(anyLong(), any(BigDecimal.class))).thenReturn(transacaoMock);
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/saque")
+
+                // ASSERT
                 .then()
                 .statusCode(200);
     }
 
     @Test
     public void testSacarSemAutenticacaoDeveDar401() {
+        // ARRANGE
+        Map<String, Object> payload = Map.of("valor", 50.0);
+
+        // ACT
         given()
                 .contentType(ContentType.JSON)
-                .body(Map.of("valor", 50.0))
+                .body(payload)
                 .pathParam("id", 1L)
-                .when().post("/contas/{id}/saque")
+                .when()
+                .post("/contas/{id}/saque")
+
+                // ASSERT
                 .then()
                 .statusCode(401);
     }
 
-    // ------------------------------------------------------------------------
-    // NOVOS TESTES: Depósito, Transferência e Consulta
-    // ------------------------------------------------------------------------
-
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testDepositarEndpointComSucesso() {
+        // ARRANGE
         Long contaId = 1L;
         Map<String, Object> payload = Map.of("valor", 100.0);
 
-        // CORREÇÃO: Criando o titular para evitar o NullPointerException no DTO de resposta
         Cliente clienteMock = new Cliente();
         clienteMock.setId(1L);
         clienteMock.setNome("Cliente Teste");
@@ -101,23 +106,26 @@ public class ContaResourceTest {
         Conta contaMock = new Conta();
         contaMock.setId(contaId);
         contaMock.setSaldo(BigDecimal.valueOf(600));
-        contaMock.setTitular(clienteMock); // Vincula o cliente à conta
+        contaMock.setTitular(clienteMock);
 
         Transacao transacaoMock = new Transacao();
         transacaoMock.setId(101L);
         transacaoMock.setValor(BigDecimal.valueOf(100.0));
         transacaoMock.setTipo(TipoTransacao.DEPOSITO);
-        transacaoMock.setContaDestino(contaMock); // Vincula a conta à transação
+        transacaoMock.setContaDestino(contaMock);
 
         when(contaRepository.findById(contaId)).thenReturn(contaMock);
         when(transacaoService.depositar(anyLong(), any(BigDecimal.class))).thenReturn(transacaoMock);
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/deposito")
+
+                // ASSERT
                 .then()
                 .statusCode(200);
     }
@@ -125,6 +133,7 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testTransferirEndpointComSucesso() {
+        // ARRANGE
         Long contaOrigemId = 1L;
         Long contaDestinoId = 2L;
 
@@ -134,13 +143,11 @@ public class ContaResourceTest {
                 "valor", 150.0
         );
 
-        // Mock do Titular (necessário para o DTO converter)
-        br.com.adacourse.models.Cliente titularMock = new br.com.adacourse.models.Cliente();
+        Cliente titularMock = new Cliente();
         titularMock.setNome("Fulano");
         titularMock.setCpf("123.456.789-00");
         titularMock.setEmail("user@teste.com");
 
-        // Mock da Conta de Origem
         Conta origenMock = new Conta();
         origenMock.setId(contaOrigemId);
         origenMock.setNumero("12345-6");
@@ -148,7 +155,6 @@ public class ContaResourceTest {
         origenMock.setSaldo(BigDecimal.valueOf(500.0));
         origenMock.setTitular(titularMock);
 
-        // Mock da Conta de Destino
         Conta destinoMock = new Conta();
         destinoMock.setId(contaDestinoId);
         destinoMock.setNumero("78910-1");
@@ -156,7 +162,6 @@ public class ContaResourceTest {
         destinoMock.setSaldo(BigDecimal.valueOf(150.0));
         destinoMock.setTitular(titularMock);
 
-        // Mock da Transação
         Transacao transacaoMock = new Transacao();
         transacaoMock.setId(102L);
         transacaoMock.setValor(BigDecimal.valueOf(150.0));
@@ -165,20 +170,20 @@ public class ContaResourceTest {
         transacaoMock.setContaOrigem(origenMock);
         transacaoMock.setContaDestino(destinoMock);
 
-        // 1. Moca o serviço de transferência
         Mockito.when(transacaoService.transferir(Mockito.anyLong(), Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenReturn(transacaoMock);
-
-        // 2. Moca o REPOSITORY com o método exato que o Resource usa (findById)
         Mockito.when(contaRepository.findById(contaOrigemId)).thenReturn(origenMock);
         Mockito.when(contaRepository.findById(contaDestinoId)).thenReturn(destinoMock);
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaOrigemId)
                 .when()
                 .post("/contas/{id}/transferencia")
+
+                // ASSERT
                 .then()
                 .statusCode(200);
     }
@@ -186,30 +191,30 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testBuscarSaldoComSucesso() {
-        // Garantindo que o ID usado no mock e no path seja rigorosamente o mesmo tipo (Long)
+        // ARRANGE
         Long contaId = 1L;
 
-        br.com.adacourse.models.Cliente titularMock = new br.com.adacourse.models.Cliente();
+        Cliente titularMock = new Cliente();
         titularMock.setNome("Fulano");
         titularMock.setCpf("123.456.789-00");
-        titularMock.setEmail("user@teste.com"); // Deve coincidir perfeitamente com o user do @TestSecurity
+        titularMock.setEmail("user@teste.com"); // Deve coincidir com o user do @TestSecurity
 
         Conta contaMock = new Conta();
         contaMock.setId(contaId);
         contaMock.setNumero("12345-6");
-        // Use a atribuição exata do seu Enum de TipoConta (CORRENTE, POUPANCA, etc.)
         contaMock.setTipo(br.com.adacourse.enums.TipoConta.CORRENTE);
         contaMock.setSaldo(BigDecimal.valueOf(1000.0));
         contaMock.setTitular(titularMock);
 
-        // ABORDAGEM SEGURA: Usamos Mockito.any() ou Mockito.anyLong() para blindar o mock
-        // contra discrepâncias de passagem de parâmetro (como int vs Long nas entrelinhas do REST)
         Mockito.when(contaService.buscarContaPorId(Mockito.anyLong())).thenReturn(contaMock);
 
+        // ACT
         given()
                 .pathParam("id", contaId)
                 .when()
                 .get("/contas/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(200);
     }
@@ -217,14 +222,13 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testCriarContaComSucesso() {
-        // Payload estruturado baseado no ContaReqDTO
+        // ARRANGE
         Map<String, Object> clientePayload = Map.of("id", 1L);
         Map<String, Object> payload = Map.of(
                 "tipo", "CORRENTE",
                 "cliente", clientePayload
         );
 
-        // Mocks das entidades internas
         Cliente titularMock = new Cliente();
         titularMock.setId(1L);
         titularMock.setNome("Cliente Teste");
@@ -235,15 +239,17 @@ public class ContaResourceTest {
         contaCriadaMock.setTipo(br.com.adacourse.enums.TipoConta.CORRENTE);
         contaCriadaMock.setTitular(titularMock);
 
-        // Moca o comportamento do service
         Mockito.when(contaService.criarConta(Mockito.any(Conta.class)))
                 .thenReturn(contaCriadaMock);
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .when()
                 .post("/contas")
+
+                // ASSERT
                 .then()
                 .statusCode(201) // Created
                 .header("Location", org.hamcrest.Matchers.containsString("/contas/50"))
@@ -254,6 +260,7 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testListarContasComSucesso() {
+        // ARRANGE
         Cliente titularMock = new Cliente();
         titularMock.setNome("Fulano");
         titularMock.setCpf("123.456.789-00");
@@ -265,12 +272,14 @@ public class ContaResourceTest {
         contaMock.setSaldo(BigDecimal.valueOf(1000.0));
         contaMock.setTitular(titularMock);
 
-        // Moca o retorno de uma lista com uma conta
         Mockito.when(contaService.listarContas()).thenReturn(List.of(contaMock));
 
+        // ACT
         given()
                 .when()
                 .get("/contas")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("$.size()", org.hamcrest.Matchers.equalTo(1))
@@ -279,11 +288,11 @@ public class ContaResourceTest {
 
     @Test
     public void testDepositarComSucesso() {
+        // ARRANGE
         Long contaId = 1L;
         Map<String, Object> payload = Map.of("valor", 200.0);
 
-        // Criando o titular para o DTO mapear sem estourar NullPointerException
-        br.com.adacourse.models.Cliente titularMock = new br.com.adacourse.models.Cliente();
+        Cliente titularMock = new Cliente();
         titularMock.setId(1L);
         titularMock.setNome("Fulano");
 
@@ -292,7 +301,7 @@ public class ContaResourceTest {
         contaMock.setNumero("12345-6");
         contaMock.setTipo(br.com.adacourse.enums.TipoConta.CORRENTE);
         contaMock.setSaldo(BigDecimal.valueOf(1200.0));
-        contaMock.setTitular(titularMock); // Adicionado aqui para resolver o NPE!
+        contaMock.setTitular(titularMock);
 
         Transacao transacaoMock = new Transacao();
         transacaoMock.setId(201L);
@@ -306,24 +315,28 @@ public class ContaResourceTest {
         Mockito.when(contaRepository.findById(contaId))
                 .thenReturn(contaMock);
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/deposito")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
-                .body("saldoAtual", org.hamcrest.Matchers.equalTo(1200.0f)); // Ajustado para a chave correta do JSON
+                .body("saldoAtual", org.hamcrest.Matchers.equalTo(1200.0f));
     }
 
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testSacarComSucesso() {
+        // ARRANGE
         Long contaId = 1L;
         Map<String, Object> payload = Map.of("valor", 50.0);
 
-        br.com.adacourse.models.Cliente titularMock = new br.com.adacourse.models.Cliente();
+        Cliente titularMock = new Cliente();
         titularMock.setId(1L);
         titularMock.setNome("Fulano");
 
@@ -346,30 +359,37 @@ public class ContaResourceTest {
         Mockito.when(contaRepository.findById(contaId))
                 .thenReturn(contaMock);
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/saque")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
-                .body("saldoAtual", org.hamcrest.Matchers.equalTo(450.0f)); // Corrigido de contaAtualizada.saldo para saldoAtual
+                .body("saldoAtual", org.hamcrest.Matchers.equalTo(450.0f));
     }
 
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testCriarContaLançaIllegalArgumentException() {
+        // ARRANGE
         Map<String, Object> payload = Map.of("tipo", "CORRENTE", "cliente", Map.of("id", 1L));
 
         Mockito.when(contaService.criarConta(Mockito.any(Conta.class)))
                 .thenThrow(new IllegalArgumentException("Dados inválidos para criação da conta"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .when()
                 .post("/contas")
+
+                // ASSERT
                 .then()
                 .statusCode(400)
                 .body("erro", org.hamcrest.Matchers.equalTo("Dados inválidos para criação da conta"));
@@ -378,16 +398,20 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testCriarContaLançaNotFoundException() {
+        // ARRANGE
         Map<String, Object> payload = Map.of("tipo", "CORRENTE", "cliente", Map.of("id", 99L));
 
         Mockito.when(contaService.criarConta(Mockito.any(Conta.class)))
                 .thenThrow(new jakarta.ws.rs.NotFoundException("Cliente não encontrado"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .when()
                 .post("/contas")
+
+                // ASSERT
                 .then()
                 .statusCode(404)
                 .body("erro", org.hamcrest.Matchers.equalTo("Conta não encontrada"));
@@ -395,18 +419,22 @@ public class ContaResourceTest {
 
     @Test
     public void testDepositarLançaUnsupportedOperationException() {
+        // ARRANGE
         Long contaId = 1L;
         Map<String, Object> payload = Map.of("valor", 100.0);
 
         Mockito.when(transacaoService.depositar(Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenThrow(new UnsupportedOperationException("Tipo de conta não permite depósito manual"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/deposito")
+
+                // ASSERT
                 .then()
                 .statusCode(422)
                 .body("erro", org.hamcrest.Matchers.equalTo("Tipo de conta não permite depósito manual"));
@@ -414,18 +442,22 @@ public class ContaResourceTest {
 
     @Test
     public void testDepositarLançaIllegalArgumentException() {
+        // ARRANGE
         Long contaId = 99L;
         Map<String, Object> payload = Map.of("valor", 100.0);
 
         Mockito.when(transacaoService.depositar(Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenThrow(new IllegalArgumentException("Conta destino inexistente"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/deposito")
+
+                // ASSERT
                 .then()
                 .statusCode(404)
                 .body("erro", org.hamcrest.Matchers.equalTo("Conta destino inexistente"));
@@ -434,18 +466,22 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testSacarLançaIllegalArgumentException() {
+        // ARRANGE
         Long contaId = 99L;
         Map<String, Object> payload = Map.of("valor", 50.0);
 
         Mockito.when(transacaoService.sacar(Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenThrow(new IllegalArgumentException("Conta não encontrada"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/saque")
+
+                // ASSERT
                 .then()
                 .statusCode(404)
                 .body("erro", org.hamcrest.Matchers.equalTo("Conta não encontrada"));
@@ -454,25 +490,31 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testSacarLançaIllegalStateException() {
+        // ARRANGE
         Long contaId = 1L;
         Map<String, Object> payload = Map.of("valor", 5000.0);
 
         Mockito.when(transacaoService.sacar(Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenThrow(new IllegalStateException("Saldo insuficiente para o saque"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaId)
                 .when()
                 .post("/contas/{id}/saque")
+
+                // ASSERT
                 .then()
                 .statusCode(422)
                 .body("erro", org.hamcrest.Matchers.equalTo("Saldo insuficiente para o saque"));
     }
 
+    @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testTransferirLançaIllegalArgumentException() {
+        // ARRANGE
         Long contaOrigemId = 1L;
         Map<String, Object> payload = Map.of(
                 "valor", 150.0,
@@ -482,12 +524,15 @@ public class ContaResourceTest {
         Mockito.when(transacaoService.transferir(Mockito.anyLong(), Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenThrow(new IllegalArgumentException("Conta de destino não foi localizada"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaOrigemId)
                 .when()
                 .post("/contas/{id}/transferencia")
+
+                // ASSERT
                 .then()
                 .statusCode(404)
                 .body("erro", org.hamcrest.Matchers.equalTo("Conta de destino não foi localizada"));
@@ -496,6 +541,7 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testTransferirLançaIllegalStateException() {
+        // ARRANGE
         Long contaOrigemId = 1L;
         Map<String, Object> payload = Map.of(
                 "valor", 90000.0,
@@ -505,12 +551,15 @@ public class ContaResourceTest {
         Mockito.when(transacaoService.transferir(Mockito.anyLong(), Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenThrow(new IllegalStateException("Limite diário de transferência excedido"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaOrigemId)
                 .when()
                 .post("/contas/{id}/transferencia")
+
+                // ASSERT
                 .then()
                 .statusCode(422)
                 .body("erro", org.hamcrest.Matchers.equalTo("Limite diário de transferência excedido"));
@@ -519,9 +568,10 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testBuscarContaPorIdComoGerente() {
+        // ARRANGE
         Long contaId = 1L;
 
-        br.com.adacourse.models.Cliente titularMock = new br.com.adacourse.models.Cliente();
+        Cliente titularMock = new Cliente();
         titularMock.setNome("Fulano");
         titularMock.setCpf("123.456.789-00");
         titularMock.setEmail("cliente@comum.com"); // Email diferente do gerente
@@ -535,10 +585,13 @@ public class ContaResourceTest {
 
         Mockito.when(contaService.buscarContaPorId(contaId)).thenReturn(contaMock);
 
+        // ACT
         given()
                 .pathParam("id", contaId)
                 .when()
                 .get("/contas/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("numero", org.hamcrest.Matchers.equalTo("12345-6"));
@@ -547,9 +600,10 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "dono@conta.com", roles = {"CLIENTE"})
     public void testBuscarPropriaContaComoCliente() {
+        // ARRANGE
         Long contaId = 2L;
 
-        br.com.adacourse.models.Cliente titularMock = new br.com.adacourse.models.Cliente();
+        Cliente titularMock = new Cliente();
         titularMock.setNome("Ciclano");
         titularMock.setCpf("987.654.321-11");
         titularMock.setEmail("dono@conta.com"); // Mesmo email definido no @TestSecurity
@@ -563,10 +617,13 @@ public class ContaResourceTest {
 
         Mockito.when(contaService.buscarContaPorId(contaId)).thenReturn(contaMock);
 
+        // ACT
         given()
                 .pathParam("id", contaId)
                 .when()
                 .get("/contas/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(200)
                 .body("numero", org.hamcrest.Matchers.equalTo("54321-0"));
@@ -575,14 +632,17 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "gerente@mybank.com", roles = {"GERENTE"})
     public void testBuscarContaPorIdInexistente() {
+        // ARRANGE
         Long contaId = 999L;
-
         Mockito.when(contaService.buscarContaPorId(contaId)).thenReturn(null);
 
+        // ACT
         given()
                 .pathParam("id", contaId)
                 .when()
                 .get("/contas/{id}")
+
+                // ASSERT
                 .then()
                 .statusCode(404)
                 .body("erro", org.hamcrest.Matchers.equalTo("Conta Id não encontrada"));
@@ -591,38 +651,37 @@ public class ContaResourceTest {
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testTransferirComSucesso() {
+        // ARRANGE
         Long contaOrigemId = 1L;
         Long contaDestinoId = 2L;
 
-        // Payload estruturado respeitando o DTO de entrada
         Map<String, Object> payload = Map.of(
                 "valor", 100.0,
                 "contaDestino", Map.of("id", contaDestinoId)
         );
 
-        // Mock Titulares
-        br.com.adacourse.models.Cliente origTitular = new br.com.adacourse.models.Cliente();
-        origTitular.setId(10L); origTitular.setNome("Origem");
+        Cliente origTitular = new Cliente();
+        origTitular.setId(10L);
+        origTitular.setNome("Origem");
 
-        br.com.adacourse.models.Cliente destTitular = new br.com.adacourse.models.Cliente();
-        destTitular.setId(20L); destTitular.setNome("Destino");
+        Cliente destTitular = new Cliente();
+        destTitular.setId(20L);
+        destTitular.setNome("Destino");
 
-        // Mock Contas pós-transferência
         Conta contaOrigemMock = new Conta();
         contaOrigemMock.setId(contaOrigemId);
         contaOrigemMock.setNumero("11111-1");
         contaOrigemMock.setTipo(br.com.adacourse.enums.TipoConta.CORRENTE);
-        contaOrigemMock.setSaldo(BigDecimal.valueOf(400.0)); // Tinha 500, restam 400
+        contaOrigemMock.setSaldo(BigDecimal.valueOf(400.0));
         contaOrigemMock.setTitular(origTitular);
 
         Conta contaDestinoMock = new Conta();
         contaDestinoMock.setId(contaDestinoId);
         contaDestinoMock.setNumero("22222-2");
         contaDestinoMock.setTipo(br.com.adacourse.enums.TipoConta.CORRENTE);
-        contaDestinoMock.setSaldo(BigDecimal.valueOf(200.0)); // Tinha 100, agora tem 200
+        contaDestinoMock.setSaldo(BigDecimal.valueOf(200.0));
         contaDestinoMock.setTitular(destTitular);
 
-        // Mock Transação gerada
         Transacao transacaoMock = new Transacao();
         transacaoMock.setId(303L);
         transacaoMock.setValor(BigDecimal.valueOf(100.0));
@@ -631,31 +690,31 @@ public class ContaResourceTest {
         transacaoMock.setContaOrigem(contaOrigemMock);
         transacaoMock.setContaDestino(contaDestinoMock);
 
-        // Configuração dos comportamentos no Mockito
         Mockito.when(transacaoService.transferir(Mockito.anyLong(), Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenReturn(transacaoMock);
         Mockito.when(contaRepository.findById(contaOrigemId)).thenReturn(contaOrigemMock);
         Mockito.when(contaRepository.findById(contaDestinoId)).thenReturn(contaDestinoMock);
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaOrigemId)
                 .when()
                 .post("/contas/{id}/transferencia")
+
+                // ASSERT
                 .then()
                 .statusCode(200);
-        // Se o seu TransferenciaRespDTO contiver chaves específicas como 'saldoOrigem',
-        // você pode adicionar asserções como: .body("saldoOrigem", org.hamcrest.Matchers.equalTo(400.0f))
     }
 
     @Test
     @TestSecurity(user = "cliente_invasor@teste.com", roles = {"CLIENTE"})
     public void testBuscarContaDeOutroClienteLançaForbidden() {
+        // ARRANGE
         Long contaId = 1L;
 
-        // Criando uma conta que pertence ao "Fulano" (email diferente do usuário logado)
-        br.com.adacourse.models.Cliente titularMock = new br.com.adacourse.models.Cliente();
+        Cliente titularMock = new Cliente();
         titularMock.setNome("Fulano");
         titularMock.setCpf("123.456.789-00");
         titularMock.setEmail("fulano_dono@teste.com"); // Email diferente do "cliente_invasor"
@@ -667,42 +726,46 @@ public class ContaResourceTest {
         contaMock.setSaldo(BigDecimal.valueOf(1000.0));
         contaMock.setTitular(titularMock);
 
-        // Moca o service para encontrar a conta do Fulano
         Mockito.when(contaService.buscarContaPorId(contaId)).thenReturn(contaMock);
 
+        // ACT
         given()
                 .pathParam("id", contaId)
                 .when()
                 .get("/contas/{id}")
+
+                // ASSERT
                 .then()
-                .statusCode(403) // Garante que barrou o acesso
+                .statusCode(403)
                 .body("erro", org.hamcrest.Matchers.equalTo("Acesso não autorizado"));
     }
 
     @Test
     @TestSecurity(user = "user@teste.com", roles = {"CLIENTE"})
     public void testTransferirLançaIllegalArgumentExceptionContaNaoEncontrada() {
+        // ARRANGE
         Long contaOrigemId = 1L;
         Long contaDestinoInexistenteId = 999L;
 
-        // Payload enviando um ID de destino que vai falhar
         Map<String, Object> payload = Map.of(
                 "valor", 100.0,
                 "contaDestino", Map.of("id", contaDestinoInexistenteId)
         );
 
-        // Configura o service para lançar a exceção capturada por esse catch específico
         Mockito.when(transacaoService.transferir(Mockito.anyLong(), Mockito.anyLong(), Mockito.any(BigDecimal.class)))
                 .thenThrow(new IllegalArgumentException("Conta de origem ou destino não encontrada no sistema"));
 
+        // ACT
         given()
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .pathParam("id", contaOrigemId)
                 .when()
                 .post("/contas/{id}/transferencia")
+
+                // ASSERT
                 .then()
-                .statusCode(404) // Valida o Response.Status.NOT_FOUND do catch
+                .statusCode(404)
                 .body("erro", org.hamcrest.Matchers.equalTo("Conta de origem ou destino não encontrada no sistema"));
     }
 }
